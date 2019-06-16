@@ -16,28 +16,39 @@ array[Available, Required] of var 0..1: assignments;
 array[Required] of var 0..10000: excess_length;
 array[Required] of var int: core_ratio;
 
+function var int: assigned_cores(Required: r) =
+	sum(a in Available)(
+		if assignments[a, r] == 1 then
+			avail_cores[a]
+		else
+			0
+		endif
+	);
+
 constraint forall(r in Required)(
-	% Each link must have exactly one fibre assigned
-	sum(a in Available)(assignments[a, r]) == 1
+	% Each link must have one or more fibres assigned
+	sum(a in Available)(assignments[a, r]) >= 1
+	/\
+	% Total cores of assigned fibres must be sufficient
+	assigned_cores(r) >= req_cores[r]
+	/\
+	% Record the ratio of used cores
+	core_ratio[r] = assigned_cores(r) div req_cores[r] - 1
+	/\
+	% Record excess length
+	excess_length[r] = sum(a in Available)(
+		if assignments[a, r] == 1 then
+			avail_lengths[a] - req_lengths[r]
+		else
+			0
+		endif
+	)
 );
 
 constraint forall(a in Available)(
 	% Each available fibre should be assigned at most once
 	sum(r in Required)(assignments[a, r]) <= 1
-	/\
-	forall(r in Required)(
-		if assignments[a, r] == 1 then
-			% Available cores must equal or exceed required cores
-			avail_cores[a] >= req_cores[r]
-			/\
-			% If a fibre is assigned, record its excess length so we can minimise it
-			excess_length[r] = avail_lengths[a] - req_lengths[r]
-			/\
-			% Also record the excess cores
-			core_ratio[r] = round(avail_cores[a] / req_cores[r]) - 1
-		endif
-	)
 );
 
-% Objective: minimise excess length
-solve minimize sum(r in Required)(excess_length[r] + core_ratio[r] * 50);
+% Objective: minimise excess length and unused cores
+solve minimize sum(r in Required)(excess_length[r] + core_ratio[r] * 20);
