@@ -14,6 +14,7 @@ set of int: Required = 1..length(req_cores);
 % Variables to solve
 array[Available, Required] of var 0..1: assignments;
 array[Required] of var 0..10000: excess_length;
+array[Required] of var int: core_ratio;
 
 constraint forall(r in Required)(
 	% Each link must have exactly one fibre assigned
@@ -31,9 +32,12 @@ constraint forall(a in Available)(
 			/\
 			% If a fibre is assigned, record its excess length so we can minimise it
 			excess_length[r] = avail_lengths[a] - req_lengths[r]
+			/\
+			% Also record the excess cores
+			core_ratio[r] = round(avail_cores[a] / req_cores[r]) - 1
 		endif
 	)
 );
 
 % Objective: minimise excess length
-solve minimize sum(i in Required)(excess_length[i]);
+solve minimize sum(r in Required)(excess_length[r] + core_ratio[r] * 50);
