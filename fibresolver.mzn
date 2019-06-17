@@ -12,9 +12,9 @@ array[int] of int: req_lengths;
 set of int: Required = 1..length(req_cores);
 
 % Variables to solve
-array[Required, Available] of var 0..1: assignments;
-array[Required] of var 0..10000: excess_length;
-array[Required] of var int: core_ratio;
+array[Required, Available] of var bool: assignments;
+array[Required] of var 0..1000: excess_length;
+array[Required] of var 0..100: core_ratio;
 
 function var int: assigned_cores(Required: r) =
 	sum(a in Available)(
@@ -51,7 +51,7 @@ constraint forall(a in Available)(
 );
 
 % Objective: minimise excess length and unused cores
-solve minimize sum(r in Required)(excess_length[r] + core_ratio[r] * 20);
+solve minimize sum(r in Required)(excess_length[r] + core_ratio[r] * 100);
 
 output [if a == 1 then "\n Fibre " ++ show(r) ++ ": " else "" endif ++
 	show(assignments[r, a]) | r in Required, a in Available]
