@@ -11,10 +11,12 @@ array[int] of int: req_lengths;
 
 set of int: Required = 1..length(req_cores);
 
+int: CORE_RATIO_MAX = 10;
+
 % Variables to solve
 array[Required, Available] of var bool: assignments;
 array[Required] of var 0..1000: excess_length;
-array[Required] of var 0..100: core_ratio;
+array[Required] of var 0..CORE_RATIO_MAX: core_ratio;
 
 function var int: assigned_cores(Required: r) =
 	sum(a in Available)(
@@ -25,15 +27,28 @@ function var int: assigned_cores(Required: r) =
 		endif
 	);
 
+% Assert that the total number of assigned cores meets the requirement
+predicate adequate_cores(Required: r) =
+ 	assigned_cores(r) >= req_cores[r];
+
+% Assert that all fibres assigned to a link are long enough
+predicate adequate_lengths(Required: r) =
+	forall(a in Available)(
+		if assignments[r, a] == 1 then
+			avail_lengths[a] >= req_lengths[r]
+		endif
+	);
+
 constraint forall(r in Required)(
 	% Each link must have one or more fibres assigned
 	sum(a in Available)(assignments[r, a]) >= 1
 	/\
-	% Total cores of assigned fibres must be sufficient
-	assigned_cores(r) >= req_cores[r]
+	adequate_cores(r)
+	/\
+	adequate_lengths(r)
 	/\
 	% Record the ratio of used cores
-	core_ratio[r] = assigned_cores(r) div req_cores[r] - 1
+	core_ratio[r] = min(assigned_cores(r) div req_cores[r] - 1, CORE_RATIO_MAX)
 	/\
 	% Record excess length
 	excess_length[r] = sum(a in Available)(
